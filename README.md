@@ -4,7 +4,34 @@
 
 上传一张 IP 人物参考图并指定年份后，它可以先建立准确的公历、农历、节气和重要节日数据，再生成一套具有统一角色身份、四季场景、月份换装与水彩卡片语言的 12 张月历海报。
 
-![2027 年 IP 月历全年效果](assets/examples/2027-full-year-preview.jpg)
+## 2027 年案例
+
+全年正式交付包含 12 张独立单月成品。以下案例按每行 4 张展示；点击图片可以查看对应月份的独立预览。
+
+<table>
+  <tr>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-01.jpg"><img src="assets/examples/tengger-2027/2027-01.jpg" alt="2027年1月月历"></a><br><sub>2027 · 01</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-02.jpg"><img src="assets/examples/tengger-2027/2027-02.jpg" alt="2027年2月月历"></a><br><sub>2027 · 02</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-03.jpg"><img src="assets/examples/tengger-2027/2027-03.jpg" alt="2027年3月月历"></a><br><sub>2027 · 03</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-04.jpg"><img src="assets/examples/tengger-2027/2027-04.jpg" alt="2027年4月月历"></a><br><sub>2027 · 04</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-05.jpg"><img src="assets/examples/tengger-2027/2027-05.jpg" alt="2027年5月月历"></a><br><sub>2027 · 05</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-06.jpg"><img src="assets/examples/tengger-2027/2027-06.jpg" alt="2027年6月月历"></a><br><sub>2027 · 06</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-07.jpg"><img src="assets/examples/tengger-2027/2027-07.jpg" alt="2027年7月月历"></a><br><sub>2027 · 07</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-08.jpg"><img src="assets/examples/tengger-2027/2027-08.jpg" alt="2027年8月月历"></a><br><sub>2027 · 08</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-09.jpg"><img src="assets/examples/tengger-2027/2027-09.jpg" alt="2027年9月月历"></a><br><sub>2027 · 09</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-10.jpg"><img src="assets/examples/tengger-2027/2027-10.jpg" alt="2027年10月月历"></a><br><sub>2027 · 10</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-11.jpg"><img src="assets/examples/tengger-2027/2027-11.jpg" alt="2027年11月月历"></a><br><sub>2027 · 11</sub></td>
+    <td width="25%" align="center"><a href="assets/examples/tengger-2027/2027-12.jpg"><img src="assets/examples/tengger-2027/2027-12.jpg" alt="2027年12月月历"></a><br><sub>2027 · 12</sub></td>
+  </tr>
+</table>
+
+全年总览作为第 13 个辅助预览文件保留，但不会替代上面的 12 张单月成品。
+
+[查看 2027 年全年总览](assets/examples/2027-full-year-preview.jpg)
 
 ## 主要特点
 
@@ -14,6 +41,8 @@
 - 每个月自动设计不同场景、动作、植物、道具和色彩氛围。
 - 下半部分固定使用清透、柔和的水彩卡片样式。
 - 公历、农历、节气和重要节日先建立结构化数据，再程序化排版。
+- 每个月只调用一次图像生成，随后在本地立即完成准确日期排版；不先批量生成 12 张空卡。
+- 全年正式交付为 12 张独立月历卡，每张只包含一个月份；可在最后用这 12 张成品本地追加一张全年总览，不额外调用图像生成。
 - 星期采用周一至周日七列结构，周末与重要日期使用协调的强调色。
 - 日期网格会读取每个月真实的 4、5 或 6 行结构，自动调整周间距，不机械套用固定行高。
 - 在 3072×4096 成图中，公历数字与农历、节气或节日文字默认保留 20px 可见间距。
@@ -67,9 +96,10 @@ python -m pip install pillow
 1. 读取原始 IP 图，记录不可漂移的身份锚点。
 2. 确认年份以及固定穿搭或随月份换装。
 3. 预先建立并核验全年日期数据。
-4. 先测试 1 月冬季视觉，再测试 7 月夏季视觉。
+4. 先完成 1 月和 7 月的完整成品，作为冬夏视觉锚点；用户要求直接生成全年时不中途停下等待确认。
 5. 锁定人物身份、水彩卡片、字体层级和版式比例。
-6. 逐月生成、逐张验收，最后进行全年一致性检查。
+6. 每个月执行“一次生图、立即排入日期、单张验收、清理临时底图”，再进入下个月。
+7. 最终逐一交付 12 张独立的单月完整月历卡，并进行全年一致性检查；随后可本地拼接一张全年总览作为辅助预览，但不能用总览替代单月文件。
 
 ## 动态日期排版
 
