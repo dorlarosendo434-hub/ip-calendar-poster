@@ -12,12 +12,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-DEFAULT_CHINESE_FONT = Path(r"C:\Windows\Fonts\msyh.ttc")
-DEFAULT_CHINESE_BOLD_FONT = Path(r"C:\Windows\Fonts\msyhbd.ttc")
-DEFAULT_SERIF_FONT = Path(r"C:\Windows\Fonts\georgia.ttf")
-DEFAULT_SERIF_BOLD_FONT = Path(r"C:\Windows\Fonts\georgiab.ttf")
-DEFAULT_SERIF_ITALIC_FONT = Path(r"C:\Windows\Fonts\georgiai.ttf")
 REFERENCE_WIDTH = 3072
+PRESET_FONT_FILES = {
+    "font_title": "LXGWWenKai-Medium.ttf",
+    "font_english": "LXGWWenKai-Medium.ttf",
+    "font_cn_bold": "SourceHanSansSC-Heavy.otf",
+    "font_number": "SourceHanSerifSC-SemiBold.otf",
+    "font_cn": "SourceHanSansSC-Regular.otf",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,13 +31,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out", required=True, type=Path, help="Output PNG path")
     parser.add_argument("--width", type=int, default=3072)
     parser.add_argument("--height", type=int, default=4096)
-    parser.add_argument("--left", type=float, default=0.085, help="Usable card left ratio")
-    parser.add_argument("--right", type=float, default=0.915, help="Usable card right ratio")
-    parser.add_argument("--top", type=float, default=0.490, help="Usable card top ratio")
+    parser.add_argument("--left", type=float, default=0.155, help="Usable card left ratio")
+    parser.add_argument("--right", type=float, default=0.815, help="Usable card right ratio")
+    parser.add_argument("--top", type=float, default=0.491, help="Usable card top ratio")
     parser.add_argument(
         "--bottom",
         type=float,
-        default=0.900,
+        default=0.886,
         help="Lower safe boundary for the adaptive date grid, as an image-height ratio",
     )
     parser.add_argument(
@@ -44,12 +46,29 @@ def parse_args() -> argparse.Namespace:
         default=20,
         help="Visible vertical gap at 3072px output width; scales with output width",
     )
-    parser.add_argument("--font-cn", type=Path, default=DEFAULT_CHINESE_FONT)
-    parser.add_argument("--font-cn-bold", type=Path, default=DEFAULT_CHINESE_BOLD_FONT)
-    parser.add_argument("--font-serif", type=Path, default=DEFAULT_SERIF_FONT)
-    parser.add_argument("--font-serif-bold", type=Path, default=DEFAULT_SERIF_BOLD_FONT)
-    parser.add_argument("--font-serif-italic", type=Path, default=DEFAULT_SERIF_ITALIC_FONT)
-    return parser.parse_args()
+    parser.add_argument("--font-dir", type=Path, help="Directory containing the four fonts for the default style")
+    parser.add_argument("--font-cn", type=Path, help="Open-source font for daily labels")
+    parser.add_argument("--font-cn-bold", type=Path, help="Open-source font for weekdays")
+    parser.add_argument("--font-title", type=Path, help="Open-source title font")
+    parser.add_argument("--title-stroke-px", type=int, default=3, help="Same-color title stroke at 3072px width")
+    parser.add_argument("--weekday-size-px", type=int, default=56, help="Weekday font size at 3072px width")
+    parser.add_argument(
+        "--font-number", "--font-serif-bold", type=Path,
+        help="Open-source font for Gregorian date numbers",
+    )
+    parser.add_argument(
+        "--font-english", "--font-serif-italic", type=Path,
+        help="Open-source font for the English month",
+    )
+    parser.add_argument("--font-serif", type=Path, help=argparse.SUPPRESS)  # Legacy, unused.
+    args = parser.parse_args()
+    if args.font_dir is not None:
+        for field, filename in PRESET_FONT_FILES.items():
+            if getattr(args, field) is None:
+                setattr(args, field, args.font_dir / filename)
+    if any(font is None for font in (args.font_cn, args.font_cn_bold, args.font_number, args.font_english)):
+        parser.error("provide --font-dir or all of --font-cn, --font-cn-bold, --font-number and --font-english")
+    return args
 
 
 def cover_resize(image: Image.Image, width: int, height: int) -> Image.Image:
@@ -78,8 +97,9 @@ def draw_center(
     text: str,
     font: ImageFont.FreeTypeFont,
     fill: str,
+    stroke_width: int = 0,
 ) -> None:
-    draw.text(xy, text, font=font, fill=fill, anchor="mm")
+    draw.text(xy, text, font=font, fill=fill, anchor="mm", stroke_width=stroke_width)
 
 
 def validate_data(data: dict) -> tuple[int, int, str, dict[int, str], dict[int, str]]:
@@ -88,7 +108,14 @@ def validate_data(data: dict) -> tuple[int, int, str, dict[int, str], dict[int, 
     if not 1 <= month <= 12:
         raise ValueError("month must be between 1 and 12")
     english_month = str(data.get("english_month") or calendar.month_name[month])
-    labels = {int(day): str(label) for day, label in data["labels"].items()}
+    labels = {}
+    for day, label in data["labels"].items():
+        day_number = int(day)
+        if day_number in labels:
+            raise ValueError(f"duplicate day in labels: {day}")
+        if not isinstance(label, str) or not label.strip() or len(label.splitlines()) != 1:
+            raise ValueError(f"day {day} must have a non-empty, single-line calendar label")
+        labels[day_number] = label.strip()
     kinds = {int(day): str(kind) for day, kind in data.get("kinds", {}).items()}
     total_days = calendar.monthrange(year, month)[1]
     expected = set(range(1, total_days + 1))
@@ -120,9 +147,11 @@ def render(args: argparse.Namespace) -> None:
     pine_green = str(palette.get("solar_term", "#536C5A"))
     divider = str(palette.get("divider", "#C8B5A7"))
 
-    title_font = load_font(args.font_cn_bold, round(args.width * 0.039))
-    english_font = load_font(args.font_serif_italic, round(args.width * 0.017))
-    weekday_font = load_font(args.font_cn_bold, round(args.width * 0.015))
+    title_font = load_font(args.font_title or args.font_cn_bold, round(args.width * 0.039))
+    english_font = load_font(args.font_english, round(args.width * 0.017))
+    weekday_size = max(1, round(args.weekday_size_px * args.width / REFERENCE_WIDTH))
+    weekday_font = load_font(args.font_cn_bold, weekday_size)
+    title_stroke = max(0, round(args.title_stroke_px * args.width / REFERENCE_WIDTH))
 
     draw_center(
         draw,
@@ -130,6 +159,7 @@ def render(args: argparse.Namespace) -> None:
         f"{year}年{month}月",
         title_font,
         deep_brown,
+        stroke_width=title_stroke,
     )
     draw_center(
         draw,
@@ -167,7 +197,7 @@ def render(args: argparse.Namespace) -> None:
     row_height = (y1 - grid_top) / week_count
     number_size = round(min(args.width * 0.032, row_height * 0.56))
     label_size = round(min(args.width * 0.014, row_height * 0.25))
-    number_font = load_font(args.font_serif_bold, number_size)
+    number_font = load_font(args.font_number, number_size)
     label_font = load_font(args.font_cn, label_size)
 
     # Center the two-line date block while preserving a true visible gap between
