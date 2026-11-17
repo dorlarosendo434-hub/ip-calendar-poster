@@ -1,6 +1,6 @@
 # IP Calendar Poster
 
-一个用于制作 IP 年份月历海报的 Codex Skill。
+一个用于制作 IP 年份月历海报的 Codex Skill，也支持城市地标水彩月历这一题材类别。
 
 上传一张 IP 人物参考图并指定年份后，先制作 1 月完整样张。确认后按同一版式完成全年 12 张，保持角色身份一致，并为每个月设计独立的季节场景。
 
@@ -40,6 +40,14 @@
 该案例的全年总览作为第 13 个辅助预览文件保留，但不会替代上面的 12 张单月成品。
 
 [查看蓝发星辰兽耳 IP 的 2027 年全年总览](assets/examples/tengger-2027/full-year-preview.jpg)
+
+### 案例三：深圳城市地标水彩月历
+
+以深圳 12 处不同的现今景点为主题，每月一张完整月历。上半幅画景点，下半幅以景物本身的花叶、水色、建筑色延伸出水彩纸面；地名位于画面交接处，日期保持清晰。下图按 1—12 月顺序合成一张全年总览，原有两个 IP 案例保持独立展示。
+
+![深圳城市地标 2027 年全年水彩月历总览](assets/examples/shenzhen-landmarks-2027-full-year-preview.jpg)
+
+[单独查看深圳 2027 年全年总览大图](assets/examples/shenzhen-landmarks-2027-full-year-preview.jpg)
 
 ## 主要特点
 

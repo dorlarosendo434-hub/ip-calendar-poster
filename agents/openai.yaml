@@ -1,6 +1,6 @@
 interface:
   display_name: "IP形象月历海报"
-  short_description: "根据IP参考图先制作1月完整样张，确认后交付全年12张水彩月历海报"
+  short_description: "制作IP月历，也可按城市地标类别制作全年水彩月历"
   default_prompt: "Use $ip-calendar-poster to 根据我上传的IP形象图先做指定年份的1月完整样张，确认后完成全年12张3:4水彩月历。"
 policy:
   allow_implicit_invocation: true
