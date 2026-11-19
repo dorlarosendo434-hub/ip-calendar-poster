@@ -24,4 +24,6 @@
 python scripts/render_calendar_card.py --base base.png --data verified-calendar.json --out month.png --font-dir fonts
 ```
 
-`--font-dir` 自动按上表分配字库，应用默认字号、加粗和安全区。新系列确认1月样张时记录实际字库文件版本、强调色和安全区，便于全年复现。只有用户明确换字体时才按需使用 `--font-title`、`--font-cn-bold`、`--font-number`、`--font-cn` 和 `--font-english` 覆盖字库。
+`--font-dir` 自动按上表分配字库，应用默认字号、加粗和安全区。新系列确定版式时记录实际字库文件版本、强调色和安全区，便于全年复现。只有用户明确换字体时才按需使用 `--font-title`、`--font-cn-bold`、`--font-number`、`--font-cn` 和 `--font-english` 覆盖字库。
+
+脚本检查每天都有辅助文字、标题和日期确实绘入画面，并在确认输出 PNG 可读后返回 JSON。后续只将本次返回的 `final_png` 用于人工验收，`year`、`month` 和 `days_rendered` 可核对月度交付清单。没有成功回执时，底图和同名旧文件都继续留在内部。

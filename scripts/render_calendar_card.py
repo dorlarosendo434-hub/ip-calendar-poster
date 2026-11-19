@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import calendar
 import json
+from math import ceil, floor
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 
 WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
@@ -92,6 +94,7 @@ def load_font(path: Path, size: int) -> ImageFont.FreeTypeFont:
 
 
 def draw_center(
+    canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
     xy: tuple[float, float],
     text: str,
@@ -99,7 +102,15 @@ def draw_center(
     fill: str,
     stroke_width: int = 0,
 ) -> None:
+    x0, y0, x1, y1 = draw.textbbox(xy, text, font=font, anchor="mm", stroke_width=stroke_width)
+    box = floor(x0), floor(y0), ceil(x1), ceil(y1)
+    left, top, right, bottom = box
+    if not (0 <= left < right <= canvas.width and 0 <= top < bottom <= canvas.height):
+        raise ValueError(f"Calendar text {text!r} is empty or outside the canvas")
+    before = canvas.crop(box)
     draw.text(xy, text, font=font, fill=fill, anchor="mm", stroke_width=stroke_width)
+    if ImageChops.difference(before, canvas.crop(box)).getbbox() is None:
+        raise ValueError(f"Calendar text {text!r} did not change any pixels")
 
 
 def validate_data(data: dict) -> tuple[int, int, str, dict[int, str], dict[int, str]]:
@@ -113,8 +124,12 @@ def validate_data(data: dict) -> tuple[int, int, str, dict[int, str], dict[int, 
         day_number = int(day)
         if day_number in labels:
             raise ValueError(f"duplicate day in labels: {day}")
-        if not isinstance(label, str) or not label.strip() or len(label.splitlines()) != 1:
-            raise ValueError(f"day {day} must have a non-empty, single-line calendar label")
+        if (
+            not isinstance(label, str)
+            or len(label.splitlines()) != 1
+            or not any(character.isalnum() for character in label)
+        ):
+            raise ValueError(f"day {day} must have a single-line calendar label with letters or numbers")
         labels[day_number] = label.strip()
     kinds = {int(day): str(kind) for day, kind in data.get("kinds", {}).items()}
     total_days = calendar.monthrange(year, month)[1]
@@ -127,12 +142,30 @@ def validate_data(data: dict) -> tuple[int, int, str, dict[int, str], dict[int, 
     return year, month, english_month, labels, kinds
 
 
-def render(args: argparse.Namespace) -> None:
+def save_verified_png(canvas: Image.Image, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with NamedTemporaryFile(dir=destination.parent, prefix=".calendar-", suffix=".tmp", delete=False) as file:
+        staged = Path(file.name)
+    try:
+        canvas.save(staged, format="PNG", dpi=(300, 300), optimize=True)
+        with Image.open(staged) as output:
+            output.load()
+            if output.format != "PNG" or output.size != canvas.size:
+                raise ValueError("Saved calendar has an unexpected format or size")
+        staged.replace(destination)
+    finally:
+        staged.unlink(missing_ok=True)
+
+
+def render(args: argparse.Namespace) -> dict[str, str | int]:
     data = json.loads(args.data.read_text(encoding="utf-8"))
     year, month, english_month, labels, kinds = validate_data(data)
 
-    base = Image.open(args.base).convert("RGB")
-    canvas = cover_resize(base, args.width, args.height)
+    destination = args.out.resolve()
+    if destination in (args.base.resolve(), args.data.resolve()):
+        raise ValueError("Calendar output must be separate from its base image and data")
+    with Image.open(args.base) as base:
+        canvas = cover_resize(base.convert("RGB"), args.width, args.height)
     draw = ImageDraw.Draw(canvas)
 
     x0, x1 = args.left * args.width, args.right * args.width
@@ -154,6 +187,7 @@ def render(args: argparse.Namespace) -> None:
     title_stroke = max(0, round(args.title_stroke_px * args.width / REFERENCE_WIDTH))
 
     draw_center(
+        canvas,
         draw,
         (center_x, y0 + args.height * 0.038),
         f"{year}年{month}月",
@@ -162,6 +196,7 @@ def render(args: argparse.Namespace) -> None:
         stroke_width=title_stroke,
     )
     draw_center(
+        canvas,
         draw,
         (center_x, y0 + args.height * 0.080),
         english_month,
@@ -174,6 +209,7 @@ def render(args: argparse.Namespace) -> None:
     for column, weekday in enumerate(WEEKDAYS):
         color = terracotta if column >= 5 else deep_brown
         draw_center(
+            canvas,
             draw,
             (x0 + column_width * (column + 0.5), weekday_y),
             weekday,
@@ -232,6 +268,7 @@ def render(args: argparse.Namespace) -> None:
                 else soft_brown
             )
             draw_center(
+                canvas,
                 draw,
                 (x, number_y),
                 str(day),
@@ -239,6 +276,7 @@ def render(args: argparse.Namespace) -> None:
                 number_color,
             )
             draw_center(
+                canvas,
                 draw,
                 (x, label_y),
                 labels[day],
@@ -246,12 +284,17 @@ def render(args: argparse.Namespace) -> None:
                 label_color,
             )
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(args.out, format="PNG", dpi=(300, 300), optimize=True)
+    save_verified_png(canvas, destination)
+    return {
+        "final_png": str(destination),
+        "year": year,
+        "month": month,
+        "days_rendered": len(labels),
+    }
 
 
 def main() -> None:
-    render(parse_args())
+    print(json.dumps(render(parse_args()), ensure_ascii=True))
 
 
 if __name__ == "__main__":
